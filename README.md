@@ -1,92 +1,116 @@
 # Black-Box Optimization (BBO) Capstone Project
 
-## Section 1: Project Overview
+This repository contains my capstone work on black-box optimization across 8 unknown objective functions. The project focuses on query-efficient maximization: given only input-output evaluations, the goal is to propose the next best point to sample while balancing exploration and exploitation.
 
-The BBO capstone project focuses on optimizing black-box functions whose internal mechanics are unknown or expensive to evaluate. These functions simulate real-world problems such as detecting contamination sources, tuning ML hyperparameters, or optimizing chemical processes. The overall goal is to identify input configurations that maximize outputs while using as few queries as possible. This project is highly relevant in practical ML and engineering scenarios, where experiments are costly, outputs may be noisy, and the system is partially observed. By engaging with this problem, I develop skills in decision-making under uncertainty, exploration-exploitation strategies, and interpreting complex, high-dimensional data, all of which are directly applicable to careers in data science, optimization, and applied ML research.
+The workflows are implemented in function-specific Jupyter notebooks and supported by shared query logs in `inputs.txt` and `outputs.txt`.
 
----
+## Project Documentation
 
-## Section 2: Inputs and Outputs
+- [Dataset Datasheet](dataset_datasheet.md)
+- [Model Card for the BBO Optimisation Approach](model_card.md)
 
-Each function receives a multi-dimensional input array and returns a single scalar output representing performance or signal strength.
+## Project Summary
 
-- **Inputs:**  
-  - Format: `[x1, x2, ..., xd]` where `d` varies by function (2D–8D).  
-  - Constraints: Continuous values, typically in the range `[0, 1]`.  
-  - Examples:  
-    - Function 1 (2D): `[0.731024, 0.732999]`  
-    - Function 6 (5D): `[0.45, 0.30, 0.15, 0.50, 0.25]`  
+The project investigates how Bayesian optimization and related heuristics can be used to maximize black-box functions with limited evaluation budgets. Across the repository, the approach combines:
 
-- **Outputs:**  
-  - A single scalar value reflecting function performance or signal strength.  
-  - Examples:  
-    - Function 1: `7.71e-16` (near a contamination source)  
-    - Function 6: `-0.012` (negative of loss, framed for maximization)  
+- Gaussian Process surrogate models
+- acquisition functions such as Upper Confidence Bound (UCB) and Expected Improvement (EI)
+- global random exploration
+- local perturbation around high-performing regions
+- function-specific heuristics for different dimensions and response surfaces
 
----
+The functions vary in dimension from 2D to 8D and represent different optimization settings, including sparse-response search problems such as contamination-source detection and more structured high-dimensional maximization tasks.
 
-## Section 3: Challenge Objectives
+## Repository Structure
 
-The primary objective is to **maximize each function’s output** while adhering to practical constraints:  
+- `function_1/` to `function_8/`
+  Each folder contains:
+  - `function_i.ipynb`: notebook used to analyze that function and generate the next candidate point
+  - `initial_inputs.npy`: initial seed inputs for that function
+  - `initial_outputs.npy`: initial seed outputs for that function
+- `inputs.txt`
+  Sequential log of submitted candidate inputs across all 8 functions
+- `outputs.txt`
+  Sequential log of returned scalar outputs corresponding to `inputs.txt`
+- `dataset_datasheet.md`
+  Datasheet describing the dataset, collection process, intended uses, and maintenance considerations
+- `model_card.md`
+  Model card describing the optimization approach, performance, assumptions, and limitations
 
-- **Limited queries:** Only a small number of function evaluations are allowed relative to the search space.  
-- **Unknown function structure:** The relationships between inputs and outputs are opaque.  
-- **Noisy or sparse outputs:** Some functions produce highly variable or mostly zero outputs, making peaks difficult to detect.  
+## Data Format
 
-Secondary considerations include computational efficiency and handling high-dimensional input spaces, particularly for Functions 6–8. Overall, the challenge is to locate the **global maximum or strong local maxima** efficiently, minimizing wasted queries.
+Each function is treated as a maximization problem.
 
----
+- Inputs are continuous vectors, typically bounded to `[0, 1]`
+- Outputs are scalar objective values
+- Initial seed observations are stored as NumPy arrays
+- Additional query rounds are stored as ordered plain-text logs in `inputs.txt` and `outputs.txt`
 
-## Section 4: Technical Approach
+Function dimensionalities:
 
-The approach integrates **exploration**, **exploitation**, and **surrogate modeling**:
+- Function 1: 2D
+- Function 2: 2D
+- Function 3: 3D
+- Function 4: 4D
+- Function 5: 4D
+- Function 6: 5D
+- Function 7: 6D
+- Function 8: 8D
 
-1. **Exploration:**  
-   - Early queries are spread randomly or via low-discrepancy sampling to cover the input space and locate regions with non-zero or high outputs.  
-   - Essential for sparse or noisy functions like Function 1 and Function 2.
+## Optimisation Approach
 
-2. **Exploitation:**  
-   - Once a promising region is detected, small local perturbations refine the maximum.  
-   - Step sizes and directions are chosen based on prior observations, enabling controlled hill-climbing near peaks.
+The notebooks follow the same high-level loop:
 
-3. **Modeling:**  
-   - **Gaussian Processes (GPs)** serve as surrogate models to predict outputs and estimate uncertainty.  
-   - Acquisition functions like **Upper Confidence Bound (UCB)** balance exploration of high-uncertainty regions with exploitation of high-value areas.  
-   - Thresholding outputs allows **soft-margin or kernel SVMs** to classify high vs low regions, capturing non-linear boundaries, though regression remains necessary for precise maxima.
+1. load the initial seed data for one function;
+2. append any previously submitted query points and observed outputs;
+3. fit a surrogate model to the available data;
+4. score candidate points using an acquisition rule or search heuristic;
+5. propose the next point expected to improve the objective.
 
-4. **Heuristics & Iterative Improvement:**  
-   - Directional probing along individual features helps test local gradients.  
-   - Irrelevant features or dimensions are noted for potential dimensionality reduction.  
-   - Strategies evolve as new outputs are observed, refining both surrogate predictions and heuristic choices.
+The approach evolved across the project rather than staying fixed. Early rounds emphasized broader exploration, while later rounds focused more on exploiting promising regions discovered by the surrogate model.
 
-This approach is effective because it combines **uncertainty-aware modeling**, **local exploration heuristics**, and **flexible adaptation** to various function types, from low-dimensional sparse peaks to high-dimensional complex landscapes. It mirrors real-world optimization, where incomplete knowledge, limited experiments, and multi-dimensional interactions are common.
+## Current Performance Snapshot
 
----
+Using the 10 logged rounds in `inputs.txt` and `outputs.txt`, the best observed submitted values are:
 
-## Section 5: Learning Outcomes
+- Function 1: `0.005716883885302281`
+- Function 2: `0.6219564059776775`
+- Function 3: `-0.009153765203187628`
+- Function 4: `-28.914094514315888`
+- Function 5: `2777.805513886249`
+- Function 6: `-0.5707448070355233`
+- Function 7: `1.0564175188888865`
+- Function 8: `9.605274086169`
 
-- Developed intuition for **exploration vs exploitation** in black-box optimization.  
-- Learned to **incorporate uncertainty** into decision-making using surrogate models.  
-- Gained experience interpreting **sparse, non-linear, and high-dimensional functions**.  
-- Improved skills in **feature relevance assessment, visualization, and incremental optimization**, applicable to real-world data science challenges.  
-- Prepared to make decisions under uncertainty, combining **heuristics with model-based predictions**.
+These results show the approach can produce strong gains on some functions, while performance is more mixed on others. A fuller interpretation is documented in the model card.
 
----
+## How To Use
 
-## Section 6: Tools and Visualization
+To work with a function notebook:
 
-- **Python Libraries:** NumPy, SciPy, Matplotlib, Seaborn, scikit-learn  
-- **Visualization Techniques:**  
-  - PCA projections for high-dimensional input points  
-  - 2D/3D scatter plots  
-  - Pairplots and parallel coordinates to observe trends and interactions  
-- Query selection combines **visual intuition** and **model predictions**, refining maxima efficiently.  
+1. open one of the notebooks in `function_1/` to `function_8/`;
+2. load the initial `.npy` data for that function;
+3. read prior project submissions from `inputs.txt` and `outputs.txt`;
+4. run the notebook cells to fit the current surrogate model;
+5. inspect the proposed next query point.
 
----
+The notebooks use common Python scientific libraries, including NumPy, SciPy, Matplotlib, and scikit-learn.
 
-## Section 7: Future Work
+## Scope and Limitations
 
-- Implement **batch query strategies** to optimize multiple points in parallel.  
-- Explore **kernelized surrogate models** for highly non-linear, high-dimensional surfaces.  
-- Incorporate automated **feature selection** and **dimensionality reduction** for Functions 6–8.  
-- Combine Bayesian Optimization with **evolutionary algorithms** to handle rugged or multi-modal landscapes.  
+This repository is an educational capstone project, not a production optimization system. The black-box functions are intentionally opaque, the logged dataset is small, and some notebook choices are function-specific rather than standardized across all tasks.
+
+The project is best used as:
+
+- a record of iterative black-box optimization experiments
+- a demonstration of Bayesian optimization ideas
+- a basis for reflection on exploration, exploitation, and surrogate modeling
+
+It should not be treated as a validated benchmark for safety-critical real-world decision-making.
+
+## Future Improvements
+
+- standardize acquisition and logging settings across all notebooks
+- add per-round metadata such as timestamps and rationale for each query
+- compare multiple acquisition strategies more systematically
+- add reproducibility guidance for rerunning the full optimization workflow
